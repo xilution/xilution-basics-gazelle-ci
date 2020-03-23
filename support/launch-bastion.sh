@@ -25,9 +25,9 @@ aws ec2 create-key-pair --key-name "$key_name" | jq -r ".KeyMaterial" > ./key.pe
 chmod 0600 ./key.pem
 
 echo Enter Giraffe Pipeline ID:
-read -r giraffe_pipeline_id
+read -r gazelle_pipeline_id
 
-instance_id=$(aws ec2 run-instances --launch-template LaunchTemplateName=xilution-giraffe-"${giraffe_pipeline_id}" --key-name "$key_name" | jq -r ".Instances[0].InstanceId")
+instance_id=$(aws ec2 run-instances --launch-template LaunchTemplateName=xilution-gazelle-"${gazelle_pipeline_id}" --key-name "$key_name" | jq -r ".Instances[0].InstanceId")
 
 state="unknown"
 while [[ ! $state =~ ^(running)$ ]]
@@ -44,7 +44,7 @@ cat <<EOF >./bastion.yaml
 ---
 client_aws_account_id: ${client_aws_account_id}
 client_aws_region: ${client_aws_region}
-giraffe_pipeline_id: ${giraffe_pipeline_id}
+gazelle_pipeline_id: ${gazelle_pipeline_id}
 public_dns_name: ${public_dns_name}
 instance_id: ${instance_id}
 key_name: ${key_name}
