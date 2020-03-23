@@ -15,7 +15,7 @@ resource "aws_vpc" "xilution_vpc" {
   enable_dns_hostnames = true
   enable_dns_support = true
   tags = {
-    Name = "xilution"
+    Name = "xilution-gazelle-${substr(var.pipeline_id, 0, 8)}-vpc"
     xilution_organization_id = var.organization_id
     originator = "xilution.com"
   }
@@ -27,7 +27,7 @@ resource "aws_subnet" "xilution_public_subnet_1" {
   availability_zone = "us-east-1a"
   map_public_ip_on_launch = true
   tags = {
-    Name = "xilution-public-subnet-1"
+    Name = "xilution-gazelle-${substr(var.pipeline_id, 0, 8)}-public-subnet-1"
     xilution_organization_id = var.organization_id
     originator = "xilution.com"
   }
@@ -39,7 +39,7 @@ resource "aws_subnet" "xilution_public_subnet_2" {
   availability_zone = "us-east-1b"
   map_public_ip_on_launch = true
   tags = {
-    Name = "xilution-public-subnet-2"
+    Name = "xilution-gazelle-${substr(var.pipeline_id, 0, 8)}-public-subnet-2"
     xilution_organization_id = var.organization_id
     originator = "xilution.com"
   }
@@ -50,7 +50,7 @@ resource "aws_subnet" "xilution_private_subnet_1" {
   vpc_id = aws_vpc.xilution_vpc.id
   availability_zone = "us-east-1a"
   tags = {
-    Name = "xilution-private-subnet-1"
+    Name = "xilution-gazelle-${substr(var.pipeline_id, 0, 8)}-private-subnet-1"
     xilution_organization_id = var.organization_id
     originator = "xilution.com"
   }
@@ -61,7 +61,7 @@ resource "aws_subnet" "xilution_private_subnet_2" {
   vpc_id = aws_vpc.xilution_vpc.id
   availability_zone = "us-east-1b"
   tags = {
-    Name = "xilution-private-subnet-2"
+    Name = "xilution-gazelle-${substr(var.pipeline_id, 0, 8)}-private-subnet-2"
     xilution_organization_id = var.organization_id
     originator = "xilution.com"
   }
@@ -149,7 +149,7 @@ resource "aws_lambda_permission" "allow-gazelle-cloudwatch-every-ten-minute-even
 }
 
 resource "aws_cloudwatch_event_rule" "gazelle-cloudwatch-every-ten-minute-event-rule" {
-  name = "gazelle-${var.pipeline_id}-cloudwatch-event-rule"
+  name = "xilution-gazelle-${substr(var.pipeline_id, 0, 8)}-cloudwatch-event-rule"
   schedule_expression = "rate(10 minutes)"
   role_arn = data.aws_iam_role.cloudwatch-events-rule-invocation-role.arn
   tags = {
@@ -200,7 +200,7 @@ resource "aws_cloudwatch_event_target" "gazelle-cloudwatch-event-target" {
 # Dashboards
 
 resource "aws_cloudwatch_dashboard" "gazelle-cloudwatch-dashboard" {
-  dashboard_name = "xilution-gazelle-${var.pipeline_id}-dashboard"
+  dashboard_name = "xilution-gazelle-${substr(var.pipeline_id, 0, 8)}-dashboard"
 
   dashboard_body = <<-EOF
   {
