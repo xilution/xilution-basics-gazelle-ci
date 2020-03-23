@@ -6,7 +6,7 @@ variable "organization_id" {
 variable "product_id" {
   type = string
   description = "The Product ID"
-  default = "2ef2593165b143a9b14bc393e6ce90d9"
+  default = "444f956231be4028bc370c03f433d340"
 }
 
 variable "pipeline_id" {
