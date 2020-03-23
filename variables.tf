@@ -11,7 +11,7 @@ variable "product_id" {
 
 variable "pipeline_id" {
   type = string
-  description = "The Giraffe Pipeline ID"
+  description = "The Gazelle Pipeline ID"
 }
 
 variable "client_aws_account" {

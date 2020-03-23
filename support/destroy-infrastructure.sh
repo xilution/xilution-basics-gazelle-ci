@@ -3,7 +3,7 @@
 echo Enter Client Xilution Organization ID:
 read -r client_xilution_organization_id
 
-echo Enter Giraffe Pipeline ID:
+echo Enter Gazelle Pipeline ID:
 read -r gazelle_pipeline_id
 
 echo Enter Client AWS Account ID:
