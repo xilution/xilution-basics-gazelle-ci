@@ -1,32 +1,5 @@
 data "aws_region" "current" {}
 
-data "aws_vpc" "xilution_vpc" {
-  filter {
-    name = "tag:Name"
-    values = [
-      "xilution"
-    ]
-  }
-}
-
-data "aws_subnet" "xilution_public_subnet_1" {
-  filter {
-    name = "tag:Name"
-    values = [
-      "xilution-public-subnet-1"
-    ]
-  }
-}
-
-data "aws_subnet" "xilution_public_subnet_2" {
-  filter {
-    name = "tag:Name"
-    values = [
-      "xilution-public-subnet-2"
-    ]
-  }
-}
-
 data "aws_iam_role" "cloudwatch-events-rule-invocation-role" {
   name = "xilution-cloudwatch-events-rule-invocation-role"
 }
@@ -35,239 +8,135 @@ data "aws_lambda_function" "metrics-reporter-lambda" {
   function_name = "xilution-client-metrics-reporter-lambda"
 }
 
-# Network File System
+# Network (VPN, Subnets, Etc.)
 
-resource "aws_efs_file_system" "nfs" {
-  creation_token = "xilution-gazelle-${var.pipeline_id}"
+resource "aws_vpc" "xilution_vpc" {
+  cidr_block = "10.0.0.0/16"
+  enable_dns_hostnames = true
+  enable_dns_support = true
+  tags = {
+    Name = "xilution"
+    xilution_organization_id = var.organization_id
+    originator = "xilution.com"
+  }
+}
+
+resource "aws_subnet" "xilution_public_subnet_1" {
+  cidr_block = "10.0.0.0/24"
+  vpc_id = aws_vpc.xilution_vpc.id
+  availability_zone = "us-east-1a"
+  map_public_ip_on_launch = true
+  tags = {
+    Name = "xilution-public-subnet-1"
+    xilution_organization_id = var.organization_id
+    originator = "xilution.com"
+  }
+}
+
+resource "aws_subnet" "xilution_public_subnet_2" {
+  cidr_block = "10.0.2.0/24"
+  vpc_id = aws_vpc.xilution_vpc.id
+  availability_zone = "us-east-1b"
+  map_public_ip_on_launch = true
+  tags = {
+    Name = "xilution-public-subnet-2"
+    xilution_organization_id = var.organization_id
+    originator = "xilution.com"
+  }
+}
+
+resource "aws_subnet" "xilution_private_subnet_1" {
+  cidr_block = "10.0.1.0/24"
+  vpc_id = aws_vpc.xilution_vpc.id
+  availability_zone = "us-east-1a"
+  tags = {
+    Name = "xilution-private-subnet-1"
+    xilution_organization_id = var.organization_id
+    originator = "xilution.com"
+  }
+}
+
+resource "aws_subnet" "xilution_private_subnet_2" {
+  cidr_block = "10.0.3.0/24"
+  vpc_id = aws_vpc.xilution_vpc.id
+  availability_zone = "us-east-1b"
+  tags = {
+    Name = "xilution-private-subnet-2"
+    xilution_organization_id = var.organization_id
+    originator = "xilution.com"
+  }
+}
+
+resource "aws_internet_gateway" "xilution_internet_gateway" {
+  vpc_id = aws_vpc.xilution_vpc.id
   tags = {
     xilution_organization_id = var.organization_id
     originator = "xilution.com"
   }
 }
 
-resource "aws_security_group" "mount_target_security_group" {
-  name = "allow-nfs-in"
-  description = "Allow inbound NFS traffic to mount targets"
-  vpc_id = data.aws_vpc.xilution_vpc.id
-  ingress {
-    from_port = 2049
-    protocol = "tcp"
-    to_port = 2049
-    cidr_blocks = [
-      data.aws_vpc.xilution_vpc.cidr_block
-    ]
-  }
-  egress {
-    from_port = 0
-    to_port = 0
-    protocol = "-1"
-    cidr_blocks = [
-      "0.0.0.0/0"]
-  }
+resource "aws_eip" "xilution_elastic_ip" {
   tags = {
     xilution_organization_id = var.organization_id
     originator = "xilution.com"
   }
 }
 
-resource "aws_efs_mount_target" "mount_target_1" {
-  file_system_id = aws_efs_file_system.nfs.id
-  subnet_id = data.aws_subnet.xilution_public_subnet_1.id
-  security_groups = [
-    aws_security_group.mount_target_security_group.id
-  ]
-}
-
-resource "aws_efs_mount_target" "mount_target_2" {
-  file_system_id = aws_efs_file_system.nfs.id
-  subnet_id = data.aws_subnet.xilution_public_subnet_2.id
-  security_groups = [
-    aws_security_group.mount_target_security_group.id
-  ]
-}
-
-resource "aws_ssm_parameter" "efs_filesystem_id" {
-  name = "xilution-gazelle-${var.pipeline_id}-efs-filesystem-id"
-  description = "A Giraffe Filesystem ID"
-  type = "String"
-  value = aws_efs_file_system.nfs.id
+resource "aws_nat_gateway" "xilution_nat_gateway" {
+  allocation_id = aws_eip.xilution_elastic_ip.id
+  subnet_id = aws_subnet.xilution_public_subnet_1.id
   tags = {
     xilution_organization_id = var.organization_id
     originator = "xilution.com"
   }
 }
 
-# Kubernetes
-
-locals {
-  k8s_cluster_name = "xilution-gazelle-${substr(var.pipeline_id, 0, 8)}"
-}
-
-module "eks" {
-  source = "terraform-aws-modules/eks/aws"
-  version = "v7.0.1"
-  cluster_name = local.k8s_cluster_name
-  cluster_version = "1.14"
-  # See: https://docs.aws.amazon.com/eks/latest/userguide/control-plane-logs.html
-  cluster_enabled_log_types = [
-    "api",
-    "audit",
-    "authenticator",
-    "controllerManager",
-    "scheduler"
-  ]
-  subnets = [
-    data.aws_subnet.xilution_public_subnet_1.id,
-    data.aws_subnet.xilution_public_subnet_2.id
-  ]
-  vpc_id = data.aws_vpc.xilution_vpc.id
-  worker_groups = [
-    {
-      instance_type = "t3.medium"
-      autoscaling_enabled = true
-      protect_from_scale_in = false
-      asg_max_size = 4
-      asg_min_size = 1
-      asg_desired_capacity = 2
-      tags = [
-        {
-          key = "xilution_organization_id"
-          value = var.organization_id
-          propagate_at_launch = true
-          xilution_organization_id = var.organization_id
-          originator = "xilution.com"
-        }
-      ]
-    }
-  ]
-  # Needed for Container Insights
-  workers_additional_policies = [
-    "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
-  ]
+resource "aws_route_table" "xilution_public_route_table" {
+  vpc_id = aws_vpc.xilution_vpc.id
   tags = {
     xilution_organization_id = var.organization_id
     originator = "xilution.com"
   }
 }
 
-resource "null_resource" "k8s_configure" {
-  depends_on = [
-    module.eks
-  ]
-  triggers = {
-    always_run = timestamp()
-  }
-  provisioner "local-exec" {
-    command = "aws eks update-kubeconfig --name ${local.k8s_cluster_name}"
-  }
-  provisioner "local-exec" {
-    command = "/bin/bash ${path.module}/scripts/install-namespaces.sh"
-  }
-  provisioner "local-exec" {
-    command = "/bin/bash ${path.module}/scripts/install-efs-csi-driver.sh"
-  }
-  provisioner "local-exec" {
-    command = "/bin/bash ${path.module}/scripts/install-efs-persistent-volume.sh ${aws_efs_file_system.nfs.id}"
-  }
-  provisioner "local-exec" {
-    command = "/bin/bash ${path.module}/scripts/install-metrics-server.sh"
-  }
-  provisioner "local-exec" {
-    command = "/bin/bash ${path.module}/scripts/install-kubernetes-dashboard.sh"
-  }
-  provisioner "local-exec" {
-    # Allow time for the Kubernetes to warm up before using Helm.
-    # Addresses the following error taken when executing the next step.
-    # Error: Could not get apiVersions from Kubernetes: unable to retrieve the complete list of server APIs: metrics.k8s.io/v1beta1: the server is currently unable to handle the request
-    command = "sleep 30"
-  }
-  provisioner "local-exec" {
-    command = "/bin/bash ${path.module}/scripts/install-container-insights.sh ${data.aws_region.current.name} ${local.k8s_cluster_name}"
-  }
-  provisioner "local-exec" {
-    command = "/bin/bash ${path.module}/scripts/install-cluster-autoscaler.sh ${data.aws_region.current.name} ${local.k8s_cluster_name}"
-  }
-  provisioner "local-exec" {
-    command = "/bin/bash ${path.module}/scripts/install-nginx-ingress-controller.sh"
-  }
+resource "aws_route" "xilution_public_route" {
+  route_table_id = aws_route_table.xilution_public_route_table.id
+  destination_cidr_block = "0.0.0.0/0"
+  gateway_id = aws_internet_gateway.xilution_internet_gateway.id
 }
 
-# Support Template
-
-locals {
-  user_data = <<-EOF
-  #cloud-config
-  repo_update: true
-  repo_upgrade: all
-  runcmd:
-  - apt-get -y install amazon-efs-utils
-  - apt-get -y install nfs-common
-  - mkdir -p /mnt/efs/fs1
-  - test -f "/sbin/mount.efs" && echo "${aws_efs_file_system.nfs.id}:/ /mnt/efs/fs1 efs tls,_netdev" >> /etc/fstab || echo "${aws_efs_file_system.nfs.id}.efs.us-east-1.amazonaws.com:/ /mnt/efs/fs1 nfs4 nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport,_netdev 0 0" >> /etc/fstab
-  - test -f "/sbin/mount.efs" && echo -e "\n[client-info]\nsource=liw" >> /etc/amazon/efs/efs-utils.conf
-  - mount -a -t efs,nfs4 defaults
-  EOF
+resource "aws_route_table_association" "xilution_public_route_table_association_1" {
+  route_table_id = aws_route_table.xilution_public_route_table.id
+  subnet_id = aws_subnet.xilution_public_subnet_1.id
 }
 
-resource "aws_security_group" "support_launch_template_security_group" {
-  name = "support_launch_template_security_group"
-  vpc_id = data.aws_vpc.xilution_vpc.id
-  ingress {
-    from_port = 22
-    protocol = "tcp"
-    to_port = 22
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-  egress {
-    from_port = 0
-    protocol = "-1"
-    to_port = 0
-    cidr_blocks = ["0.0.0.0/0"]
-  }
+resource "aws_route_table_association" "xilution_public_route_table_association_2" {
+  route_table_id = aws_route_table.xilution_public_route_table.id
+  subnet_id = aws_subnet.xilution_public_subnet_2.id
 }
 
-resource "aws_launch_template" "support_launch_template" {
-  name = "xilution-gazelle-${var.pipeline_id}"
-  image_id = "ami-0a887e401f7654935"
-  ebs_optimized = false
-  block_device_mappings {
-    device_name = "/dev/xvda"
-    ebs {
-      encrypted = false
-      delete_on_termination = true
-      volume_size = 8
-      volume_type = "gp2"
-    }
-  }
-  network_interfaces {
-    associate_public_ip_address = true
-    delete_on_termination = true
-    device_index = 0
-    security_groups = [
-      aws_security_group.support_launch_template_security_group.id
-    ]
-    subnet_id = data.aws_subnet.xilution_public_subnet_1.id
-  }
-  instance_type = "t2.micro"
-  monitoring {
-    enabled = false
-  }
-  placement {
-    tenancy = "default"
-  }
-  disable_api_termination = false
-  instance_initiated_shutdown_behavior = "stop"
-  user_data = base64encode(local.user_data)
-  credit_specification {
-    cpu_credits = "standard"
-  }
-  capacity_reservation_specification {
-    capacity_reservation_preference = "open"
-  }
+resource "aws_route_table" "xilution_private_route_table" {
+  vpc_id = aws_vpc.xilution_vpc.id
   tags = {
     xilution_organization_id = var.organization_id
     originator = "xilution.com"
   }
+}
+
+resource "aws_route" "xilution_private_route" {
+  route_table_id = aws_route_table.xilution_private_route_table.id
+  destination_cidr_block = "0.0.0.0/0"
+  nat_gateway_id = aws_nat_gateway.xilution_nat_gateway.id
+}
+
+resource "aws_route_table_association" "xilution_private_route_table_association_1" {
+  route_table_id = aws_route_table.xilution_private_route_table.id
+  subnet_id = aws_subnet.xilution_private_subnet_1.id
+}
+
+resource "aws_route_table_association" "xilution_private_route_table_association_2" {
+  route_table_id = aws_route_table.xilution_private_route_table.id
+  subnet_id = aws_subnet.xilution_private_subnet_2.id
 }
 
 # Metrics
