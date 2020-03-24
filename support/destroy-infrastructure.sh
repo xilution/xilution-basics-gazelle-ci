@@ -26,7 +26,7 @@ export AWS_PROFILE=client-profile
 export AWS_REGION=$client_aws_region
 
 export XILUTION_ORGANIZATION_ID=${client_xilution_organization_id}
-export PIPELINE_ID=${gazelle_pipeline_id}
+export GAZELLE_PIPELINE_ID=${gazelle_pipeline_id}
 export XILUTION_AWS_ACCOUNT=$AWS_PROD_ACCOUNT_ID
 export XILUTION_AWS_REGION=us-east-1
 export XILUTION_ENVIRONMENT=prod
