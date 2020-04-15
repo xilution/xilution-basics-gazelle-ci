@@ -61,9 +61,13 @@ Run `make init`
 
 Run `make verify`
 
-## To Test Pipeline Infrastructure Step
+## To Test Pipeline Infrastructure Up Step
 
-Run `make test-pipeline-infrastructure`
+Run `make test-pipeline-infrastructure-up`
+
+## To Test Pipeline Infrastructure Down Step
+
+Run `make test-pipeline-infrastructure-down`
 
 ## To Uninstall the infrastructure
 
