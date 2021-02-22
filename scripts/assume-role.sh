@@ -1,7 +1,7 @@
 #!/bin/bash -e
 
 awsAccountId=${CLIENT_AWS_ACCOUNT}
-awsRole=xilution-developer-role
+awsRole=xilution-agent-role
 
 echo "awsAccountId = ${awsAccountId}"
 echo "awsRole = ${awsRole}"
@@ -22,3 +22,5 @@ export AWS_SECRET_ACCESS_KEY=${awsSecretAccessKey}
 
 awsSessionToken=$(cat <./aws-creds.json | jq -r ".Credentials.SessionToken")
 export AWS_SESSION_TOKEN=${awsSessionToken}
+
+echo "All Done!"
