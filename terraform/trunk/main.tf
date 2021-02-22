@@ -53,13 +53,6 @@ resource "aws_internet_gateway" "xilution_internet_gateway" {
   }
 }
 
-resource "aws_eip" "xilution_elastic_ip" {
-  tags = {
-    xilution_organization_id = var.organization_id
-    originator               = "xilution.com"
-  }
-}
-
 resource "aws_route_table" "xilution_public_route_table" {
   vpc_id = aws_vpc.xilution_vpc.id
   tags = {
