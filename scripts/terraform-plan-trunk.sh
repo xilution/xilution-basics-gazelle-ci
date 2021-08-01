@@ -1,5 +1,8 @@
 #!/bin/bash -e
 
+currentDir=$(pwd)
+cd ./terraform/trunk
+
 terraform plan -no-color \
   -var="organization_id=$XILUTION_ORGANIZATION_ID" \
   -var="gazelle_pipeline_id=$GAZELLE_PIPELINE_ID" \
@@ -9,4 +12,6 @@ terraform plan -no-color \
   -var="xilution_aws_region=$XILUTION_AWS_REGION" \
   -var="xilution_environment=$XILUTION_ENVIRONMENT" \
   -var="xilution_pipeline_type=$PIPELINE_TYPE" \
-  ./terraform/trunk
+  -out=./terraform-plan.txt
+
+cd ${currentDir}
