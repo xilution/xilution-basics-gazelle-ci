@@ -240,3 +240,33 @@ resource "aws_cloudwatch_dashboard" "gazelle-cloudwatch-dashboard" {
   }
   EOF
 }
+
+# Resource Links
+
+output "resource_link_self" {
+  value = {
+    "productId" : var.gazelle_pipeline_id,
+    "link" : {
+      "href" : "https://portal.bison.basics.xilution.com/organizations/${var.organization_id}/pipelines/${var.gazelle_pipeline_id}",
+      "label" : {
+        "default" : "Self",
+        "en" : "Self"
+      },
+      "type" : "INTERNAL"
+    }
+  }
+}
+
+output "resource_link_vpc" {
+  value = {
+    "productId" : var.gazelle_pipeline_id,
+    "link" : {
+      "href" : "https://console.aws.amazon.com/vpc/home?region=${var.client_aws_region}#VpcDetails:VpcId=${aws_vpc.xilution_vpc.id}",
+      "label" : {
+        "default" : "AWS VPC",
+        "en" : "AWS VPC"
+      },
+      "type" : "EXTERNAL"
+    }
+  }
+}
